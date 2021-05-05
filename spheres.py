@@ -13,14 +13,14 @@ class sphere:
     def get_distance(self,coordinates):
         dist_squared = 0
         for i in range(len(coordinates)):
-            dist_squared += pow(coordinates-self.coordinates,2)
+            dist_squared += pow(coordinates[i]-self.coordinates[i],2)
         return(pow(dist_squared,0.5))
 
-def generate_sphere(spheres,radius,max_distance,dimensions=3,exception_limit=10000):
+def generate_sphere(spheres,radius,max_distance, max_x_distance,dimensions=3,exception_limit=10000):
     def generate_coordinates():
-        coordinates=[]
-        for i in range(dimensions):
-            coordinates[i] = max_distance*(random.random()*2-1)
+        coordinates=np.random.random(dimensions)
+        coordinates = max_distance*(coordinates*2-1)
+        coordinates[0] = max_x_distance*(rng.random()*2-1)
         return(coordinates)
     success = 0
     n = 0
@@ -32,18 +32,20 @@ def generate_sphere(spheres,radius,max_distance,dimensions=3,exception_limit=100
             raise(LimitError)
         new_coordinates = generate_coordinates()
         success = 1
-        for sphere in spheres:
-            distance = sphere.get_distance(new_coordinates)
-            if distance < (sphere.radius+radius):
-                success=success*0
+        for each in spheres:
+            distance = each.get_distance(new_coordinates)
+            if distance < (each.radius+radius):
+                success=0
     return(sphere(radius, new_coordinates))
 
-def generate_volume(number_of_spheres, distribution, max_distance):
+def generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):
 
     spheres = []
     sections = []
     while len(sections)<number_of_spheres:
-        spheres.append(generate_sphere(spheres,distribution(),max_distance))
+        spheres.append(generate_sphere(spheres,distribution(dist_parameters),max_distance, max_x_distance))
         if spheres[len(spheres)-1].plane_cut_radius != False:
+            print('success')
+            print(len(sections))
             sections.append(spheres[len(spheres)-1].plane_cut_radius)
     return(sections)
