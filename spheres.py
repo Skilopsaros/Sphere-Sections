@@ -39,13 +39,17 @@ def generate_sphere(spheres,radius,max_distance, max_x_distance,dimensions=3,exc
     return(sphere(radius, new_coordinates))
 
 def generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):
-
     spheres = []
     sections = []
+    cut_spheres_radii = []
     while len(sections)<number_of_spheres:
         spheres.append(generate_sphere(spheres,distribution(dist_parameters),max_distance, max_x_distance))
         if spheres[len(spheres)-1].plane_cut_radius != False:
-            print('success')
-            print(len(sections))
             sections.append(spheres[len(spheres)-1].plane_cut_radius)
-    return(sections)
+            print(' '+str(len(sections))+ '/' + str(number_of_spheres), end="\r", flush=True)
+            cut_spheres_radii.append(spheres[len(spheres)-1].radius)
+
+    spheres_radii = []
+    for i in spheres:
+        spheres_radii.append(i.radius)
+    return(sections,cut_spheres_radii, spheres_radii)
