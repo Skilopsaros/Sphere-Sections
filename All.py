@@ -365,7 +365,7 @@ def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bin
 #################################### Run Code ####################################
 ##################################################################################
 
-analyse_spheres(3000, from_range, 21, 30, False, 1, 10,20)
+analyse_spheres(30000, from_range, 21, 30, False, 1, 10,20)
 #analyse_spheres(1000, constant, 21, 20, True, 1, 9.5)
 #analyse_spheres(5000, normal_distribution, 40, 30, False, 1, 12,3)
 #analyse_spheres(500, from_range, 8, 22, False, .1, 1,2)
