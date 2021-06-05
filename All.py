@@ -11,6 +11,9 @@ plt.rcParams.update({
 ##################################################################################
 ########################### Defining the Distributions ###########################
 ##################################################################################
+
+# All of these take an imput of a touple of their parameters, and output a value drawn from the named distributions
+# unless return_ks is True, then they return a list of number_of_samples different values
 def constant(x, return_ks= False, number_of_samples = 0):
     if return_ks:
         result = []
@@ -19,7 +22,7 @@ def constant(x, return_ks= False, number_of_samples = 0):
         return(result)
     return(x[0])
 
-def from_range(limits, return_ks= False, number_of_samples = 0):
+def from_range(limits, return_ks= False, number_of_samples = 0): # limits is two values, a low and a high one
     if return_ks:
         result = []
         for i in range(int(number_of_samples)):
@@ -27,7 +30,7 @@ def from_range(limits, return_ks= False, number_of_samples = 0):
         return(result)
     return(rng.random()*(limits[1]-limits[0])+limits[0])
 
-def normal_distribution(specifications, return_ks= False, number_of_samples = 0):
+def normal_distribution(specifications, return_ks= False, number_of_samples = 0): # specifications are mean and standard deviation
     if return_ks:
         result = []
         for i in range(int(number_of_samples)):
@@ -45,7 +48,7 @@ def normal_distribution(specifications, return_ks= False, number_of_samples = 0)
 ##################################################################################
 
 
-class sphere:
+class sphere: # a sphere for the overlapping case. Has coordinates and a radius, and can check its distance to other coordinates.
     def __init__(self,radius, coordinates):
         self.coordinates = coordinates
         self.radius = radius
@@ -60,7 +63,7 @@ class sphere:
             dist_squared += pow(coordinates[i]-self.coordinates[i],2)
         return(pow(dist_squared,0.5))
 
-def generate_sphere(spheres,radius,max_distance, max_x_distance,dimensions=3,exception_limit=10000):
+def generate_sphere(spheres,radius,max_distance, max_x_distance,dimensions=3,exception_limit=10000): # generates a sphere for the non overlapping case, somewhere in the volume where it doesn't overlap with anything
     def generate_coordinates():
         coordinates=np.random.random(dimensions)
         coordinates = max_distance*(coordinates*2-1)
@@ -72,30 +75,30 @@ def generate_sphere(spheres,radius,max_distance, max_x_distance,dimensions=3,exc
     while (0==success):
         n+=1
         if n > exception_limit:
-            class LimitError:
+            class LimitError:#define an error if it tries to move a sphere too many times and it can't fit it anywhere
                 pass
             raise(LimitError)
         new_coordinates = generate_coordinates()
         success = 1
         for each in spheres:
-            distance = each.get_distance(new_coordinates)
+            distance = each.get_distance(new_coordinates)#here it checks if it touches any other spheres
             if distance < (each.radius+radius):
                 success=0
                 fails +=1
     return(sphere(radius, new_coordinates), fails)
 
-def generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):
+def generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):#generates a volume full of spheres for the overlapping case
     spheres = []
     sections = []
     cut_spheres_radii = []
     total_fails = 0
-    while len(sections)<number_of_spheres:
+    while len(sections)<number_of_spheres:#generates until a specified ammount are cut by the cutting plane
         new_sphere, fails = generate_sphere(spheres,distribution(dist_parameters),max_distance, max_x_distance)
         spheres.append(new_sphere)
         total_fails+=fails
         if spheres[len(spheres)-1].plane_cut_radius != False:
             sections.append(spheres[len(spheres)-1].plane_cut_radius)
-            print(' '+str(len(sections))+ '/' + str(number_of_spheres), end="\r", flush=True)
+            print(' '+str(len(sections))+ '/' + str(number_of_spheres), end="\r", flush=True)#counter be counting
             cut_spheres_radii.append(spheres[len(spheres)-1].radius)
 
     spheres_radii = []
@@ -105,29 +108,29 @@ def generate_volume(number_of_spheres, distribution, max_x_distance, max_distanc
     return(sections,cut_spheres_radii, spheres_radii)
 
 
-class simple_sphere:
+class simple_sphere:#this sphere only has one coordinate. For the case where spheres are allowed to overlap. much simpler stuff
     def __init__(self,radius, distance):
         self.distance = distance
         self.radius = radius
         if pow(radius,2)>pow(distance,2):
-            self.plane_cut_radius = pow(pow(radius,2)-pow(distance,2),0.5) # radius of section cut by y-z plane
+            self.plane_cut_radius = pow(pow(radius,2)-pow(distance,2),0.5) # radius of section cut by plane
         else:
             self.plane_cut_radius = False
 
-def generate_simple_sphere(radius,max_distance):
+def generate_simple_sphere(radius,max_distance):#generates a sphere. so much simpler now
     def generate_distance():
         distance = max_distance*(rng.random()*2-1)
         return(distance)
     return(simple_sphere(radius, generate_distance()))
 
 
-def generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_parameters):
+def generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_parameters):#generates a 'volume'. spheres only have one coordinate.
     spheres = []
     sections = []
     cut_spheres_radii = []
     while len(sections)<number_of_spheres:
         spheres.append(generate_simple_sphere(distribution(dist_parameters),max_distance))
-        if spheres[len(spheres)-1].plane_cut_radius != False:
+        if spheres[len(spheres)-1].plane_cut_radius != False:#do stuff when the sphere is cut by the plane, like record the value of the radius of the circle
             sections.append(spheres[len(spheres)-1].plane_cut_radius)
             print(' '+str(len(sections))+ '/' + str(number_of_spheres), end="\r", flush=True)
             cut_spheres_radii.append(spheres[len(spheres)-1].radius)
@@ -140,7 +143,7 @@ def generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_
 ##################################################################################
 ############ K-S tests and comparing overlap and non overlap voluems #############
 ##################################################################################
-def calculate_ks(dis_1,dis_2):
+def calculate_ks(dis_1,dis_2):#does a K-S test for two distributions. they need to have already been put into bins
     def calculate_comulative(dis):
         com = np.zeros(len(dis))
         sum = 0
@@ -156,12 +159,12 @@ def calculate_ks(dis_1,dis_2):
     return(np.amax(dif))
 
 
-def ks_full_test(set_1,set_2):
+def ks_full_test(set_1,set_2):# Take two distributions that haven't been put into bins. do a ks test, do a permutation test, and spit out the number of standard deviations away from the mean of the permutation test the ks test was
     max_values=np.amax(np.array([np.amax(np.array(set_1)),np.amax(np.array(set_2))]))
     delta = max_values/1000
     all_values = list(set_1)
     all_values.extend(list(set_2))
-    def make_comulative(set, delta):
+    def make_comulative(set, delta):#bin the distributions into 1001 bins
         com = np.zeros(1001)
         for i in set:
             com[int(np.floor(i/delta))]+=1
@@ -169,9 +172,9 @@ def ks_full_test(set_1,set_2):
     ks_value = calculate_ks(make_comulative(set_1, delta),make_comulative(set_2, delta))
 
     ks_others = []
-    for i in range(500):
+    for i in range(500):#do 500 other ks tests for the permutation test
         print(' '+str(i)+ '/' + str(500), end="\r", flush=True)
-        rng.shuffle(all_values)
+        rng.shuffle(all_values)#shuffle
         first_set = all_values[:(int(len(all_values)/2))]
         second_set = all_values[(int(len(all_values)/2)):]
         ks_others.append(calculate_ks(make_comulative(first_set, delta),make_comulative(second_set, delta)))
@@ -180,7 +183,7 @@ def ks_full_test(set_1,set_2):
     sd = np.std(ks_others_array)
     return((ks_value-mean)/sd)
 
-def compare_volums(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):
+def compare_volums(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):# compares the overlaping and the not overlapping case
     sections  = [0,0]
     radii_cut = [0,0]
     radii_all = [0,0]
@@ -204,7 +207,7 @@ def compare_volums(number_of_spheres, distribution, max_x_distance, max_distance
 ######################## Calculating guess distributions #########################
 ##################################################################################
 
-def calculate_fs(delta_R,n_max,phis):
+def calculate_fs(delta_R,n_max,phis): # calculate the guess distribution form the distribution of circle radii using the notes formula
 
     def A_coefficient(m,n,delta_R):
         return((delta_R*m)/(pow((pow(n,2)-pow(m,2)),0.5)))
@@ -223,7 +226,7 @@ def calculate_fs(delta_R,n_max,phis):
             fs[n_max-i-1]=0
     return(fs)
 
-def alt_calculate_fs(delta_R,n_max,phis):
+def alt_calculate_fs(delta_R,n_max,phis):# calculate the guess distribution form the distribution of circle radii using the alternative formula
     def k_matrix_coeff(i,j):
         if i==j:
             return(delta_R*pow((i-0.75),0.5))
@@ -252,43 +255,36 @@ def alt_calculate_fs(delta_R,n_max,phis):
 #################################### Analysis ####################################
 ##################################################################################
 
+
+# and here is all the analysis, from start to finish.
 def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bins, add_Error = False, delta_R=1, *dist_parameters):
-    sections, radii_cut, radii_all = generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_parameters)
+    sections, radii_cut, radii_all = generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_parameters)# make a simple volume and cut it
     dis_radii_cut = np.zeros(number_of_bins)
     dis_radii_all = np.zeros(number_of_bins)
     phis = np.zeros(number_of_bins)
-    print(sections[10])
-    if add_Error:
-        print('I AM HERE')
+    if add_Error:# add some experimental uncertainties if needed
         for i in range(len(sections)):
             sections[i] += np.random.normal(0,sections[i]/10)
-    print(sections[10])
-    for i in sections:
+    for i in sections:#bin everything
         phis[int(np.floor(i/delta_R))]+=1
     for i in radii_cut:
         dis_radii_cut[int(np.floor(i/delta_R))]+=1
     for i in radii_all:
         dis_radii_all[int(np.floor(i/delta_R))]+=1
-    fs = calculate_fs(delta_R,number_of_bins,phis)
+    fs = calculate_fs(delta_R,number_of_bins,phis)#calculate with notes formula
     temp = np.array(list(fs)[:-1])
     fs = temp
-    fs_alt = alt_calculate_fs(delta_R,number_of_bins,phis)
+    fs_alt = alt_calculate_fs(delta_R,number_of_bins,phis)#calculate with alternative formula
 
-    for i in range(len(fs_alt)):
-        if fs_alt[i]<0:
-            fs_alt[i]=0
-    for i in range(len(fs)):
-        if fs[i]<0:
-            fs[i]=0
 
 
     ks_alt = calculate_ks(fs_alt,dis_radii_all)
-    ks = calculate_ks(fs,dis_radii_all)
+    ks = calculate_ks(fs,dis_radii_all)# calculate ks values
 
     ks_expected = []
     print()
-    for i in range(100):
-        print(' '+str(i)+ '/' + str(100), end="\r", flush=True)
+    for i in range(100):# do a big test to see what the ks values mean
+        print(' '+str(i)+ '/' + str(100), end="\r", flush=True)#this is the bit that takes ages
         data = [distribution(dist_parameters,return_ks=True,number_of_samples=np.floor(np.sum(fs))),distribution(dist_parameters,return_ks=True,number_of_samples=len(radii_all))]
         distributions = [np.zeros(number_of_bins),np.zeros(number_of_bins)]
         for j in range(len(data[0])):
@@ -311,7 +307,7 @@ def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bin
     print('dis radii cut')
     print(dis_radii_cut)
 
-
+#print like, a bunch of stuff
 
     sum_fs = np.sum(fs)
     fs = fs/sum_fs
@@ -324,12 +320,12 @@ def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bin
     fs_alt = fs_alt/sum_alt
     print('fs')
     print(fs)
-    print('alt fs')
+    print('alt fs')#print two big lists
     print(fs_alt)
 
 
     dis_radii_all=np.array(dis_radii_all)
-    sum_all = np.sum(dis_radii_all)
+    sum_all = np.sum(dis_radii_all)#now all this is to make plots look nice
     dis_radii_all=dis_radii_all/sum_all
     x = np.zeros(2*len(dis_radii_all)+2)
     y = np.zeros(2*len(dis_radii_all)+2)
@@ -359,7 +355,7 @@ def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bin
     plt.plot(x,y,color='red',linewidth = 3)
     plt.ylabel('$f_{(R)}$',fontsize='x-large')
     plt.xlabel('$R$',fontsize='x-large')
-    plt.show()
+    plt.show()#done
 
 ##################################################################################
 #################################### Run Code ####################################

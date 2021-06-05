@@ -143,12 +143,6 @@ def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bin
     fs = temp
     fs_alt = alt_calculate_fs(delta_R,number_of_bins,phis)
 
-    for i in range(len(fs_alt)):
-        if fs_alt[i]<0:
-            fs_alt[i]=0
-    for i in range(len(fs)):
-        if fs[i]<0:
-            fs[i]=0
 
 
     ks_alt = calculate_ks(fs_alt,dis_radii_all)
