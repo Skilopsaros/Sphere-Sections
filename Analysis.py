@@ -1,15 +1,17 @@
 import numpy as np
 import spheres as sph
 import distributions as dis
+import random as rng
 from matplotlib import pyplot as plt
 import matplotlib
+from scipy import stats as st
 plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.sans-serif": ["Computer Modern Roman"]})
 
 
-
+###############################################################################
 def calculate_fs(delta_R,n_max,phis):
 
     def A_coefficient(m,n,delta_R):
@@ -28,7 +30,7 @@ def calculate_fs(delta_R,n_max,phis):
         if fs[n_max-i-1]<0:
             fs[n_max-i-1]=0
     return(fs)
-
+###############################################################################
 def calculate_ks(dis_1,dis_2):
     def calculate_comulative(dis):
         com = np.zeros(len(dis))
@@ -45,29 +47,32 @@ def calculate_ks(dis_1,dis_2):
     return(np.amax(dif))
 
 ##########################################
+def ks_full_test(set_1,set_2):
+    max_values=np.amax(np.array([np.amax(np.array(set_1)),np.amax(np.array(set_2))]))
+    delta = max_values/1000
+    all_values = list(set_1)
+    all_values.extend(list(set_2))
+    def make_comulative(set, delta):
+        com = np.zeros(1001)
+        for i in set:
+            com[int(np.floor(i/delta))]+=1
+        return(com)
+    ks_value = calculate_ks(make_comulative(set_1, delta),make_comulative(set_2, delta))
 
-#def alt_calculate_fs(delta_R,n_max,phis):
-#
-#    def k_matrix_coeff(m,n):
-#        if n==m:
-#            return(pow((m-0.75),0.5))
-#        elif n>m:
-#            return((pow(pow(n-1/2,2)-pow(m-1,2),0.5)-pow(pow(n-0.5,2)-pow(m,2),0.5)))
-#        else:
-#           return(0)
-#    k = np.zeros((n_max,n_max))
-#    for n in range(n_max):
-#        for m in range(n_max):
-#            k[m][n]=k_matrix_coeff(m+1,n+1)
-#    k_inv = np.linalg.inv(k)
-#
-#
-#    fs = np.zeros(n_max)
-#    for i in range(n_max):
-#        for j in range(n_max):
-#            fs[n_max-1-i]+=(1/delta_R)*k_inv[n_max-i-1][n_max-1-j]*phis[n_max-1-j]
-#    return(fs)
+    ks_others = []
+    for i in range(500):
+        print(' '+str(i)+ '/' + str(500), end="\r", flush=True)
+        rng.shuffle(all_values)
+        first_set = all_values[:(int(len(all_values)/2))]
+        second_set = all_values[(int(len(all_values)/2)):]
+        ks_others.append(calculate_ks(make_comulative(first_set, delta),make_comulative(second_set, delta)))
+    ks_others_array = np.array(ks_others)
+    mean = np.mean(ks_others_array)
+    sd = np.std(ks_others_array)
+    return((ks_value-mean)/sd)
 
+
+###################################################################################################
 
 def alt_calculate_fs(delta_R,n_max,phis):
     def k_matrix_coeff(i,j):
@@ -92,16 +97,41 @@ def alt_calculate_fs(delta_R,n_max,phis):
         if fs[n_max-1-i]<0:
             fs[n_max-1-i]=0
     return(fs)
+##############################################################################
+def compare_volums(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters):
+    sections  = [0,0]
+    radii_cut = [0,0]
+    radii_all = [0,0]
+    sections[1], radii_cut[1], radii_all[1] = sph.generate_simple_volume(number_of_spheres, distribution, max_x_distance, *dist_parameters)
+    print()
+    sections[0], radii_cut[0], radii_all[0] = sph.generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters)
+    print()
+    plt.subplot(1,2,1)
+    plt.hist(sections[0])
+    plt.ylabel('$\phi_{(R)}$',fontsize='x-large')
+    plt.xlabel('$R$',fontsize='x-large')
+    plt.subplot(1,2,2)
+    plt.xlabel('$R$',fontsize='x-large')
+    plt.hist(sections[1])
+    plt.show()
+
+
+    return(ks_full_test(sections[0],sections[1]))
 
 
 ########################################
-#1000, dis.from_range,80, 3000, 10,20
-#print(calculate_fs(1,4,[0,10,8,2]))
-def analyse_spheres(number_of_spheres, distribution, max_x_distance, max_distance, number_of_bins, delta_R=1, *dist_parameters):
-    sections, radii_cut, radii_all = sph.generate_volume(number_of_spheres, distribution, max_x_distance, max_distance, *dist_parameters)
+
+def analyse_spheres(number_of_spheres, distribution, max_distance, number_of_bins, add_Error = False, delta_R=1, *dist_parameters):
+    sections, radii_cut, radii_all = sph.generate_simple_volume(number_of_spheres, distribution, max_distance, *dist_parameters)
     dis_radii_cut = np.zeros(number_of_bins)
     dis_radii_all = np.zeros(number_of_bins)
     phis = np.zeros(number_of_bins)
+    print(sections[10])
+    if add_Error:
+        print('I AM HERE')
+        for i in range(len(sections)):
+            sections[i] += np.random.normal(0,sections[i]/10)
+    print(sections[10])
     for i in sections:
         phis[int(np.floor(i/delta_R))]+=1
     for i in radii_cut:
@@ -125,7 +155,9 @@ def analyse_spheres(number_of_spheres, distribution, max_x_distance, max_distanc
     ks = calculate_ks(fs,dis_radii_all)
 
     ks_expected = []
+    print()
     for i in range(100):
+        print(' '+str(i)+ '/' + str(100), end="\r", flush=True)
         data = [distribution(dist_parameters,return_ks=True,number_of_samples=np.floor(np.sum(fs))),distribution(dist_parameters,return_ks=True,number_of_samples=len(radii_all))]
         distributions = [np.zeros(number_of_bins),np.zeros(number_of_bins)]
         for j in range(len(data[0])):
@@ -197,7 +229,7 @@ def analyse_spheres(number_of_spheres, distribution, max_x_distance, max_distanc
     plt.ylabel('$f_{(R)}$',fontsize='x-large')
     plt.xlabel('$R$',fontsize='x-large')
     plt.show()
-analyse_spheres(3000, dis.from_range, 80, 2400000, 22, 1, 10,20)
-#analyse_spheres(1000, dis.constant, 40, 40000, 450, 0.03, 9.5)
-#analyse_spheres(3000, dis.normal_distribution, 50, 800000, 30, 1, 12,3)
-#analyse_spheres(500, dis.from_range, 8, 12000, 22, .1, 1,2)
+#analyse_spheres(3000, dis.from_range, 21, 30, True, 1, 10,20)
+#analyse_spheres(1000, dis.constant, 21, 20, True, 1, 9.5)
+analyse_spheres(5000, dis.normal_distribution, 40, 30, True, 1, 12,3)
+#analyse_spheres(500, dis.from_range, 8, 22, False, .1, 1,2)
